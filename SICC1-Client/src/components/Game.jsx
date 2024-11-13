@@ -8,17 +8,18 @@ const pangrams = [
 ];
 
 const Game = () => {
-  const [started, setStarted] = useState(false); // Game started or not
+  const [started, setStarted] = useState(false);
   const [currentPangram, setCurrentPangram] = useState('');
   const [userInput, setUserInput] = useState('');
   const [keystrokes, setKeystrokes] = useState(0);
   const [gameEnded, setGameEnded] = useState(false);
-  const [resultTime, setResultTime] = useState(0);
+  const [resultTime, setResultTime] = useState(0); // Track result time
   const [accuracy, setAccuracy] = useState(0);
+  const [wpm, setWpm] = useState(0);
 
-  const [timer, setTimer] = useState(0); // Timer state (in milliseconds)
-  const startTimeRef = useRef(0); // Start time reference
-  const timerRef = useRef(null); // Timer interval reference
+  const [timer, setTimer] = useState(0);
+  const startTimeRef = useRef(0);
+  const timerRef = useRef(null);
 
   // Handle start button click
   const startGame = () => {
@@ -28,7 +29,8 @@ const Game = () => {
     setKeystrokes(0);
     setStarted(true);
     setGameEnded(false);
-    setTimer(0); // Reset timer at the start
+    setTimer(0);
+    setWpm(0);
 
     // Record the start time when the game starts
     startTimeRef.current = Date.now();
@@ -40,7 +42,7 @@ const Game = () => {
     setUserInput(value);
   };
 
-  // Track each keypress (including backspace/deletion)
+  // Track each key press (including backspace/deletion)
   const handleKeyDown = (e) => {
     if (e.key === 'Backspace') {
       setKeystrokes((prevKeystrokes) => prevKeystrokes + 1); // Backspace counts as a keystroke
@@ -58,21 +60,30 @@ const Game = () => {
 
   // End the game and calculate results
   const handleEndGame = () => {
-    clearInterval(timerRef.current); // Stop the timer when game ends
+    clearInterval(timerRef.current); // Stop the timer when the game ends
+
     const actualKeystrokes = keystrokes;
-    const minKeystrokes = currentPangram.length; // The minimum keystrokes are just the length of the pangram
-    const calculatedAccuracy = minKeystrokes / actualKeystrokes;
+    const minKeystrokes = currentPangram.length + 1; // The minimum keystrokes are the length of the pangram + 1 to account for hitting enter to end the game
+
+    const calculatedAccuracy = minKeystrokes / actualKeystrokes; // Accuracy formula: minKeystrokes / actualKeystrokes
+    const calculatedWpm = actualKeystrokes > 0 ? calculateWpm(actualKeystrokes, timer) : 0; // Calculate WPM if actualKeystrokes > 0
 
     setAccuracy(calculatedAccuracy);
+    setWpm(calculatedWpm);
     setResultTime(timer); // Store the final timer result
     setGameEnded(true);
+  };
 
-    // Post the results to the local db.json
-    postGameResults();
+  // Function to calculate words per minute (WPM)
+  const calculateWpm = (keystrokes, timeInSeconds) => {
+    // Calculate words per minute. Assuming 1 word = 5 characters.
+    const wordsTyped = keystrokes / 5;
+    const wpm = (wordsTyped / timeInSeconds) * 60; // Calculate WPM by dividing by time in seconds and multiplying by 60
+    return wpm || 0; // If the result is NaN or infinity, return 0
   };
 
   // Handle when user presses enter
-  const handleKeyPress = (e) => {
+  const handleKeyUp = (e) => {
     if (e.key === 'Enter' && userInput.trim() === currentPangram.trim()) {
       handleEndGame();
     }
@@ -81,55 +92,36 @@ const Game = () => {
   // Effect to handle timer updates at millisecond precision
   useEffect(() => {
     if (started) {
-      // Start a timer interval when the game starts
       timerRef.current = setInterval(() => {
-        // Update the timer by calculating the elapsed time in milliseconds
-        const elapsedTime = (Date.now() - startTimeRef.current) / 1000; // Time in seconds as float
-        setTimer(elapsedTime); // Update the timer state with milliseconds precision
-      }, 50); // Update every 50ms for more precision
+        const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+        setTimer(elapsedTime);
+      }, 50);
     }
 
-    // Clean up the timer interval when the game ends or component unmounts
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [started]); // Only run this effect when `started` changes
+  }, [started]);
 
   useEffect(() => {
-    // Start the game if it has started
     if (started) {
       setCurrentPangram(pangrams[Math.floor(Math.random() * pangrams.length)]);
     }
     return () => clearInterval(timerRef.current);
   }, [started]);
 
-  // Function to post the game results to db.json
-  const postGameResults = async () => {
-    const gameData = {
-      time: resultTime.toFixed(3),  // Time in seconds as a float
-      accuracy: (accuracy * 100).toFixed(2), // Accuracy as a percentage
-      keystrokes: keystrokes
-    };
-
-    try {
-      const response = await fetch('http://localhost:5000/games', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(gameData)
-      });
-
-      if (response.ok) {
-        console.log('Game results saved successfully');
-      } else {
-        console.error('Error saving game results:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
+  // Handle play again
+  const handlePlayAgain = () => {
+    setGameEnded(false);
+    setStarted(false);
+    setUserInput('');
+    setKeystrokes(0);
+    setAccuracy(0);
+    setWpm(0);
+    setResultTime(0);
+    setTimer(0);
   };
 
   return (
@@ -153,7 +145,7 @@ const Game = () => {
             value={userInput}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}  // Listen for key down events
-            onKeyPress={handleKeyPress} // Listen for enter key press to finish game
+            onKeyUp={handleKeyUp} // Listen for enter key press to finish game
             onPaste={handlePaste} // Prevent paste action
             disabled={gameEnded}
             placeholder="Start typing here..."
@@ -161,25 +153,20 @@ const Game = () => {
           />
           
           <Typography variant="body2" style={{ marginTop: '10px' }}>
-            Time: {timer.toFixed(3)} seconds | Keystrokes: {keystrokes} {/* Displaying seconds as float */}
+            Time: {timer.toFixed(3)} seconds | Keystrokes: {keystrokes}
           </Typography>
         </>
       )}
 
-      <Dialog open={gameEnded} onClose={() => setGameEnded(false)}>
+      <Dialog open={gameEnded} onClose={handlePlayAgain}>
         <DialogTitle>Game Over</DialogTitle>
         <DialogContent>
-          <Typography variant="h6">Time: {resultTime.toFixed(3)} seconds</Typography> {/* Display final time as float */}
+          <Typography variant="h6">Time: {resultTime.toFixed(3)} seconds</Typography>
           <Typography variant="h6">Accuracy: {(accuracy * 100).toFixed(2)}%</Typography>
+          <Typography variant="h6">Words Per Minute: {wpm.toFixed(2)} WPM</Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setGameEnded(false); // Close dialog
-              setStarted(false);   // Reset game state for replay
-            }}
-            color="primary"
-          >
+          <Button onClick={handlePlayAgain} color="primary">
             Play Again
           </Button>
         </DialogActions>
@@ -189,4 +176,3 @@ const Game = () => {
 };
 
 export default Game;
-

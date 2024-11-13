@@ -6,8 +6,6 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import ErrorPage from './components/ErrorPage.jsx'
 import HomePage from './components/HomePage.jsx'
-import GamesPage from './components/GamesPage.jsx'
-import Pangramea from './components/Pangramea.jsx'
 import UserProfilePage from './components/UserProfilePage.jsx'
 import Game from './components/Game.jsx'
 
@@ -22,16 +20,8 @@ const router = createBrowserRouter([
         element: <HomePage/>
       },
       {
-        path:"/games",
-        element: <GamesPage/>
-      },
-      {
-        path:"/gametest",
-        element: <Game/>
-      },
-      {
         path:"/pangramea",
-        element: <Pangramea/>
+        element: <Game/>
       },
       {
         path:"/myprofile/:id",
