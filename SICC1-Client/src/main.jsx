@@ -9,6 +9,7 @@ import HomePage from './components/HomePage.jsx'
 import GamesPage from './components/GamesPage.jsx'
 import Pangramea from './components/Pangramea.jsx'
 import UserProfilePage from './components/UserProfilePage.jsx'
+import Game from './components/Game.jsx'
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
       {
         path:"/games",
         element: <GamesPage/>
+      },
+      {
+        path:"/gametest",
+        element: <Game/>
       },
       {
         path:"/pangramea",
