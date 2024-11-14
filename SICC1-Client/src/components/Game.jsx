@@ -150,6 +150,9 @@ const Game = () => {
             disabled={gameEnded}
             placeholder="Start typing here..."
             autoFocus
+            slots={{
+                input: (props) => <input {...props} autoComplete="off" />, // Disable autocomplete via custom input slot
+              }}
           />
           
           <Typography variant="body2" style={{ marginTop: '10px' }}>
